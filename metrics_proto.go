@@ -33,7 +33,6 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
-	promvalue "github.com/prometheus/prometheus/model/value"
 	distributionpb "google.golang.org/genproto/googleapis/api/distribution"
 	labelpb "google.golang.org/genproto/googleapis/api/label"
 	googlemetricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -494,7 +493,7 @@ func protoToMetricPoint(value interface{}) (*monitoringpb.TypedValue, error) {
 		}, nil
 
 	case *metricspb.Point_DoubleValue:
-		if promvalue.IsStaleNaN(v.DoubleValue) {
+		if IsStaleNaN(v.DoubleValue) {
 			return nil, nil
 		}
 		return &monitoringpb.TypedValue{
@@ -507,7 +506,7 @@ func protoToMetricPoint(value interface{}) (*monitoringpb.TypedValue, error) {
 		dv := v.DistributionValue
 		var mv *monitoringpb.TypedValue_DistributionValue
 		if dv != nil {
-			if isStaleInt64(dv.Count) || promvalue.IsStaleNaN(dv.Sum) {
+			if isStaleInt64(dv.Count) || IsStaleNaN(dv.Sum) {
 				return nil, nil
 			}
 			var mean float64
@@ -547,7 +546,7 @@ func protoToMetricPoint(value interface{}) (*monitoringpb.TypedValue, error) {
 }
 
 func isStaleInt64(v int64) bool {
-	return v == int64(math.Float64frombits(promvalue.StaleNaN))
+	return v == int64(math.Float64frombits(StaleNaN))
 }
 
 func bucketCounts(buckets []*metricspb.DistributionValue_Bucket) []int64 {

@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -34,10 +33,7 @@ var _ FooServer = (*testServer)(nil)
 
 func (s *testServer) Single(ctx context.Context, in *FooRequest) (*FooResponse, error) {
 	if in.SleepNanos > 0 {
-		_, span := trace.StartSpan(ctx, "testpb.Single.Sleep")
-		span.AddAttributes(trace.Int64Attribute("sleep_nanos", in.SleepNanos))
 		time.Sleep(time.Duration(in.SleepNanos))
-		span.End()
 	}
 	if in.Fail {
 		return nil, fmt.Errorf("request failed")

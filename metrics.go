@@ -74,18 +74,9 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 	defer cancel()
 
 	var errors []error
-
-	ctx, span := trace.StartSpan(
-		ctx,
-		"contrib.go.opencensus.io/exporter/stackdriver.uploadMetrics",
-		trace.WithSampler(trace.NeverSample()),
-	)
-	defer span.End()
-
 	for _, metric := range metrics {
 		// Now create the metric descriptor remotely.
 		if err := se.createMetricDescriptorFromMetric(ctx, metric); err != nil {
-			span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
 			errors = append(errors, err)
 			continue
 		}
@@ -95,7 +86,6 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 	for _, metric := range metrics {
 		tsl, err := se.metricToMpbTs(ctx, metric)
 		if err != nil {
-			span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
 			errors = append(errors, err)
 			continue
 		}
@@ -117,7 +107,6 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 			nonServiceReql := se.combineTimeSeriesToCreateTimeSeriesRequest(nonServiceTsBatch)
 			for _, ctsreq := range nonServiceReql {
 				if err := createTimeSeries(ctx, se.c, ctsreq); err != nil {
-					span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
 					errors = append(errors, err)
 				}
 			}
@@ -126,7 +115,6 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 			serviceReql := se.combineTimeSeriesToCreateTimeSeriesRequest(serviceTsBatch)
 			for _, ctsreq := range serviceReql {
 				if err := createServiceTimeSeries(ctx, se.c, ctsreq); err != nil {
-					span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
 					errors = append(errors, err)
 				}
 			}

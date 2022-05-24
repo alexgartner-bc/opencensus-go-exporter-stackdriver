@@ -62,29 +62,14 @@ func TestExport(t *testing.T) {
 	}
 	defer exporter.Flush()
 
-	trace.RegisterExporter(exporter)
-	defer trace.UnregisterExporter(exporter)
 	view.RegisterExporter(exporter)
 	defer view.UnregisterExporter(exporter)
-
-	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-
-	_, span := trace.StartSpan(context.Background(), "custom-span")
-	time.Sleep(10 * time.Millisecond)
-	span.End()
 
 	// Test HTTP spans
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		_, backgroundSpan := trace.StartSpan(context.Background(), "BackgroundWork")
-		spanContext := backgroundSpan.SpanContext()
 		time.Sleep(10 * time.Millisecond)
-		backgroundSpan.End()
 
-		_, span := trace.StartSpan(req.Context(), "Sleep")
-		span.AddLink(trace.Link{Type: trace.LinkTypeChild, TraceID: spanContext.TraceID, SpanID: spanContext.SpanID})
-		time.Sleep(150 * time.Millisecond) // do work
-		span.End()
 		rw.Write([]byte("Hello, world!"))
 	})
 	server := httptest.NewServer(&ochttp.Handler{Handler: handler})
@@ -127,8 +112,6 @@ func TestGRPC(t *testing.T) {
 	}
 	defer exporter.Flush()
 
-	trace.RegisterExporter(exporter)
-	defer trace.UnregisterExporter(exporter)
 	view.RegisterExporter(exporter)
 	defer view.UnregisterExporter(exporter)
 

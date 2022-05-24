@@ -64,7 +64,6 @@ import (
 	"go.opencensus.io/resource"
 	"go.opencensus.io/resource/resourcekeys"
 	"go.opencensus.io/stats/view"
-	"go.opencensus.io/trace"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -301,7 +300,6 @@ var defaultUserAgent = fmt.Sprintf("opencensus-go %s; stackdriver-exporter %s", 
 // (to export to Stackdriver Trace) and a stats exporter (to integrate with
 // Stackdriver Monitoring).
 type Exporter struct {
-	traceExporter *traceExporter
 	statsExporter *statsExporter
 }
 
@@ -380,13 +378,8 @@ func NewExporter(o Options) (*Exporter, error) {
 	if err != nil {
 		return nil, err
 	}
-	te, err := newTraceExporter(o)
-	if err != nil {
-		return nil, err
-	}
 	return &Exporter{
 		statsExporter: se,
-		traceExporter: te,
 	}, nil
 }
 
@@ -439,7 +432,6 @@ func (e *Exporter) StopMetricsExporter() {
 
 // Close closes client connections.
 func (e *Exporter) Close() error {
-	tErr := e.traceExporter.close()
 	mErr := e.statsExporter.close()
 	// If the trace and stats exporter share client connections,
 	// closing the stats exporter will return an error indicating
@@ -447,36 +439,10 @@ func (e *Exporter) Close() error {
 	if status.Code(mErr) == codes.Canceled {
 		mErr = nil
 	}
-	if mErr != nil || tErr != nil {
-		return fmt.Errorf("error(s) closing trace client (%v), or metrics client (%v)", tErr, mErr)
+	if mErr != nil {
+		return fmt.Errorf("error(s) closing trace metrics client (%v)", mErr)
 	}
 	return nil
-}
-
-// ExportSpan exports a SpanData to Stackdriver Trace.
-func (e *Exporter) ExportSpan(sd *trace.SpanData) {
-	if len(e.traceExporter.o.DefaultTraceAttributes) > 0 {
-		sd = e.sdWithDefaultTraceAttributes(sd)
-	}
-	e.traceExporter.ExportSpan(sd)
-}
-
-// PushTraceSpans exports a bundle of OpenCensus Spans.
-// Returns number of dropped spans.
-func (e *Exporter) PushTraceSpans(ctx context.Context, node *commonpb.Node, rsc *resourcepb.Resource, spans []*trace.SpanData) (int, error) {
-	return e.traceExporter.pushTraceSpans(ctx, node, rsc, spans)
-}
-
-func (e *Exporter) sdWithDefaultTraceAttributes(sd *trace.SpanData) *trace.SpanData {
-	newSD := *sd
-	newSD.Attributes = make(map[string]interface{})
-	for k, v := range e.traceExporter.o.DefaultTraceAttributes {
-		newSD.Attributes[k] = v
-	}
-	for k, v := range sd.Attributes {
-		newSD.Attributes[k] = v
-	}
-	return &newSD
 }
 
 // Flush waits for exported data to be uploaded.
@@ -485,7 +451,6 @@ func (e *Exporter) sdWithDefaultTraceAttributes(sd *trace.SpanData) *trace.SpanD
 // want to lose recent stats or spans.
 func (e *Exporter) Flush() {
 	e.statsExporter.Flush()
-	e.traceExporter.Flush()
 }
 
 // ViewToMetricDescriptor converts an OpenCensus view to a MetricDescriptor.

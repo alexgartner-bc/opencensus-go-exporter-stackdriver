@@ -29,7 +29,6 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	"go.opencensus.io/trace"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -211,23 +210,14 @@ func (e *statsExporter) Flush() {
 func (e *statsExporter) uploadStats(vds []*view.Data) error {
 	ctx, cancel := newContextWithTimeout(e.o.Context, e.o.Timeout)
 	defer cancel()
-	ctx, span := trace.StartSpan(
-		ctx,
-		"contrib.go.opencensus.io/exporter/stackdriver.uploadStats",
-		trace.WithSampler(trace.NeverSample()),
-	)
-	defer span.End()
 
 	for _, vd := range vds {
 		if err := e.createMetricDescriptorFromView(ctx, vd.View); err != nil {
-			span.SetStatus(trace.Status{Code: 2, Message: err.Error()})
 			return err
 		}
 	}
 	for _, req := range e.makeReq(vds, maxTimeSeriesPerUpload) {
 		if err := createTimeSeries(ctx, e.c, req); err != nil {
-			span.SetStatus(trace.Status{Code: 2, Message: err.Error()})
-			// TODO(jbd): Don't fail fast here, batch errors?
 			return err
 		}
 	}

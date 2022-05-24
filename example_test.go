@@ -24,7 +24,6 @@ import (
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/stats/view"
-	"go.opencensus.io/trace"
 	"google.golang.org/genproto/googleapis/api/monitoredres"
 )
 
@@ -46,9 +45,6 @@ func Example_defaults() {
 	); err != nil {
 		log.Fatal(err)
 	}
-
-	// Export to Stackdriver Trace.
-	trace.RegisterExporter(exporter)
 
 	// Automatically add a Stackdriver trace header to outgoing requests:
 	client := &http.Client{
